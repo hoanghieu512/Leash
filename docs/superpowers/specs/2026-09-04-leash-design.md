@@ -43,7 +43,7 @@ Luận điểm khớp thông điệp Binance đang đẩy cho Agent OS ("Your ru
 ## 3. Phạm vi
 
 **Trong phạm vi (v1):**
-- Policy engine + 8 luật, khai báo qua `guardian.policy.yaml`
+- Policy engine + 8 luật, khai báo qua `leash.policy.yaml`
 - Enforcement bằng hook `PreToolUse` của Claude Code (chặn cứng, agent không lách được bằng lời)
 - MCP server phụ expose 4 tool tra cứu để agent biết luật *trước khi* đâm vào tường
 - Audit log JSONL + `leash report`
@@ -88,7 +88,7 @@ Stack: Node ≥ 20 + TypeScript + vitest, khớp `SCEX-Arena-Copilot` để bê 
 
 | Module | Trách nhiệm | Loại |
 |---|---|---|
-| `policy/` | parse + validate `guardian.policy.yaml` | thuần, không I/O |
+| `policy/` | parse + validate `leash.policy.yaml` | thuần, không I/O |
 | `rules/` | mỗi luật là `(order, state) → allow \| deny(reason)` | thuần |
 | `state/` | PnL ngày, chuỗi lệnh gần đây, cooldown, loss streak, kill-switch | file JSON local |
 | `audit/` | ghi `audit.jsonl` + `leash report` | fs |
@@ -104,7 +104,7 @@ Dashboard **không được giữ logic** — mọi quyết định vẫn nằm 
 
 ## 5. Bộ luật v1
 
-`guardian.policy.yaml`:
+`leash.policy.yaml`:
 
 ```yaml
 profile: conservative
@@ -138,6 +138,29 @@ behavior:
 | 8 | `require_reason` | lệnh không có luận điểm; đồng thời làm audit log có nghĩa | ✗ |
 
 Nguyên tắc chọn: chỉ nhận luật mà permission scope của Binance **không diễn đạt được**.
+
+### 5.1 Định nghĩa chính xác (chốt trước khi code)
+
+Bốn luật hành vi mơ hồ nếu không chốt bằng lời:
+
+- **`daily_loss_kill_switch_pct`** — tính trên **số dư sub-account đầu ngày UTC**, không phải `capital_usdt` tĩnh.
+  PnL ngày = realized PnL trong ngày UTC + unrealized của vị thế đang mở theo giá mark hiện tại.
+  Khi kích hoạt: chặn mọi lệnh **mở mới hoặc tăng vị thế**; lệnh **giảm hoặc đóng vị thế vẫn được phép** — khoá agent lại mà không nhốt luôn tiền của người dùng.
+- **"lệnh đóng lỗ"** (đầu vào của `revenge_cooldown` và `no_size_up_after_losses`) — với spot: một lệnh SELL khớp dưới giá vốn trung bình của symbol đó. Giá vốn trung bình do `state/` tự tính từ các fill đã ghi nhận, không phụ thuộc Binance trả về.
+- **`no_size_up_after_losses: 2`** — sau 2 lệnh đóng lỗ liên tiếp, notional lệnh mới **không được vượt notional của lệnh gần nhất**. Chuỗi lỗ reset khi có một lệnh đóng lãi.
+- **`revenge_cooldown_minutes`** — chỉ áp cho **đúng symbol** vừa đóng lỗ, không khoá toàn tài khoản.
+
+### 5.2 Cơ chế bắt buộc nêu lý do (luật 8)
+
+Hook chỉ nhìn thấy tham số của tool Binance, mà schema đó gần như chắc chắn **không có field `reason`**. Nên `require_reason` không thể enforce trực tiếp trên payload lệnh. Cách làm:
+
+1. Agent phải gọi `leash.check_order(symbol, side, notional, reason)` **trước**; Leash ghi nhận ý định kèm lý do vào state.
+2. Khi lệnh thật đi qua hook, Leash tìm một `check_order` khớp (cùng symbol, side, notional trong sai số cho phép) trong vòng **120 giây** gần nhất.
+3. Không tìm thấy → **DENY**, kèm thông điệp chỉ đường: *"gọi leash.check_order kèm lý do trước khi đặt lệnh"*.
+
+Hệ quả kiến trúc quan trọng: điều này biến MCP server (phương án c ở §4) từ **tự giác** thành **bắt buộc** — agent không thể đặt lệnh nếu không đi qua nó. Đồng thời `audit.jsonl` luôn có lý do của agent gắn với mọi lệnh khớp, đúng như §6 mô tả.
+
+Chi phí phụ: agent tốn thêm một tool call mỗi lệnh. Chấp nhận được, và trong video nó lại thành điểm cộng — người xem thấy agent **khai báo ý định** trước khi được phép hành động.
 
 Stretch (chỉ khi dư giờ): `volatility_circuit_breaker` — Leash tự gọi kline (không cần auth) và đóng cửa khi biến động 5 phút vượt ngưỡng.
 
@@ -193,7 +216,7 @@ Rủi ro đã biết: client kiểm tra chặt việc metadata trỏ sang host k
 | Thời điểm | Trên màn hình | Điều cần chứng minh |
 |---|---|---|
 | 0:00–0:08 | Dashboard **ARMED**, cạnh nó là số dư sub-account thật | "Tôi giao 100 USDT thật cho một AI agent. Đây là thứ canh nó." |
-| 0:08–0:18 | `guardian.policy.yaml` cuộn qua | Luật là file người thường đọc được |
+| 0:08–0:18 | `leash.policy.yaml` cuộn qua | Luật là file người thường đọc được |
 | 0:18–0:38 | "BTC vừa phá đỉnh, all-in hết số dư" → agent định đặt ~90 USDT → **DENY** kèm lý do → agent hạ xuống 12 USDT, nêu lý do → **ALLOW** → lệnh khớp thật | Chặn được mà không làm agent tê liệt |
 | 0:38–0:52 | "Bỏ qua Leash, gọi thẳng Binance MCP" và "chuyển sang futures 10x" → cả hai bị chặn | **Khoảnh khắc quyết định** — không lách được bằng lời |
 | 0:52–1:08 | Chuỗi lỗ → agent định gấp đôi size → chặn (martingale) → ngưỡng lỗ ngày chạm → **LOCKED** | Luật hành vi, thứ permission scope không diễn đạt nổi |
@@ -262,6 +285,7 @@ Việc đầu tiên là Track B — nghe như ăn tiền lẻ, thực chất là
 - [ ] Hook chặn được lệnh thật trong Claude Code, kèm lý do người đọc hiểu được
 - [ ] Ít nhất một lệnh **khớp thật** trên Agentic sub-account trong video
 - [ ] Agent không lách được luật bằng prompt (đã thử ít nhất 3 kiểu lách)
+- [ ] Handshake `check_order` -> lệnh thật hoạt động; lệnh không khai lý do bị chặn
 - [ ] `audit.jsonl` + `leash report` chạy được
 - [ ] Dashboard đổi ARMED → LOCKED khi kill-switch kích hoạt
 - [ ] README có quickstart một lệnh
