@@ -28,7 +28,7 @@ Every one of those is a real refusal from the real binary. Nothing above is illu
 ## Install
 
 ```bash
-git clone <this-repo> && cd leash && npm run setup
+git clone https://github.com/hoanghieu512/Leash.git && cd Leash && npm run setup
 ```
 
 Point Claude Code at the hook and the tools, from the repository root:
