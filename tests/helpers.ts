@@ -24,6 +24,7 @@ ${overrides}`);
 
 export function intent(over: Partial<OrderIntent> = {}): OrderIntent {
   return {
+    kind: "order" as const,
     rawToolName: "mcp__binance-mcp-server__spot_newOrder",
     canonicalTool: "spot_newOrder",
     market: "spot",

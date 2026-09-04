@@ -18,7 +18,16 @@ export type Side = "BUY" | "SELL";
 export type Market = "spot" | "margin" | "futures" | "convert" | "wallet" | "unknown";
 
 /** A single order the agent wants to place, normalised away from Binance's shapes. */
+/**
+ * Not every write is an order. A wallet transfer and a key mint must face the
+ * hard rules, but asking symbol_allowlist to judge them would be nonsense — they
+ * have no symbol. Anything unrecognised is classed as an order so the order
+ * rules, which fail closed, get to refuse it.
+ */
+export type IntentKind = "order" | "non_order";
+
 export interface OrderIntent {
+  kind: IntentKind;
   /** Tool name exactly as the hook saw it, e.g. "mcp__binance-mcp-server__tool_execute". */
   rawToolName: string;
   /**
