@@ -14,7 +14,8 @@
     "build": "esbuild src/hook/cli.ts --bundle --packages=external --platform=node --format=esm --outfile=bin/leash-hook.mjs && esbuild src/mcp/server.ts --bundle --packages=external --platform=node --format=esm --outfile=bin/leash-mcp.mjs",
     "setup": "npm install && npm run build",
     "report": "tsx src/audit/reportCli.ts",
-    "dash": "tsx src/dash/server.ts"
+    "dash": "tsx src/dash/server.ts",
+    "proxy": "tsx src/proxy/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

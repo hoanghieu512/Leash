@@ -119,7 +119,7 @@ Worth stating plainly, because a guardrail that oversells itself is worse than n
 - **It enforces on the MCP path, not on a shell.** An agent that can run commands as your user can edit Leash's own state. `state.json` is HMAC-signed, so an edited file refuses every order and lands in the audit trail — that is tamper-*evidence*, not tamper-*proofing*. Closing the gap properly means separating privileges: a different uid, a container, or a service off the machine.
 - **It does not pick trades.** Leash never decides what to buy. It decides which orders are allowed to leave.
 - **Spot only, for now.** Margin and futures are refused rather than policed.
-- **Claude Code only, for now.** A transport-level proxy would cover every MCP client; see `docs/` for the design.
+- **Claude Code enforces via a hook; other clients via the proxy.** `npm run proxy` puts the same rules on the transport, so any MCP client can point at it — the refusal text is identical because both front doors call the same `evaluate()`. The proxy forwards your OAuth token and never holds one: Binance's authorization server advertises no `registration_endpoint`, so a proxy could not obtain its own identity even if it wanted one. Verified against the live endpoint for metadata, `401` handling and header forwarding; the full browser OAuth round trip through the proxy has not yet been exercised with a second client.
 - **It cannot move your money.** There is no withdrawal tool anywhere in the Binance MCP surface, so the threat Leash addresses is value destroyed in place, not funds leaving.
 
 ## The agent being policed
