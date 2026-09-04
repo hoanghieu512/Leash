@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/leash-recon-hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Leash recon: capturing MCP payload"
+          }
+        ]
+      }
+    ]
+  }
+}
