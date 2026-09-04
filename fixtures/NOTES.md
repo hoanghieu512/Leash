@@ -53,15 +53,31 @@ Tên trường thật (điền theo payload quan sát được):
 - Min notional thực tế của BTCUSDT: 
 - Phân biệt lỗi sàn với lệnh bị Leash chặn bằng cách nào: 
 
-## 5b. Bề mặt tool — CẦN LẤY ĐỦ
+## 5b. Bề mặt tool — ĐÃ QUÉT (04/09)
 
-Quy ước tên quan sát được: `mcp__binance-mcp-server__<nhóm>_<hànhĐộng>`, nhóm đã thấy: `spot_`, `wallet_`.
+**316 tool gọi được.** `tools/list` chỉ khai 79 (+ `tool_search`, `tool_execute`); **237 tool còn lại chỉ tới được qua `tool_execute`**, tên thật nằm trong `arguments.toolName`.
 
-- [ ] Danh sách **đầy đủ** mọi tool của server (hỏi agent liệt kê)
-- [ ] Nhóm nào ứng với futures / margin (cần cho luật `spot_only`)
-- [ ] **Có tool rút tiền nào không?** Docs nói không có withdrawal scope — phải xác minh bằng danh sách thật. Nếu có, đó là rủi ro lớn nhất của cả dự án và Leash phải chặn tuyệt đối.
+| | Số lượng |
+|---|---|
+| Tổng tool gọi được | 316 |
+| Có tên trong `tools/list` | 79 (+2) |
+| Chỉ qua `tool_execute` | 237 |
+| Tool ghi (đổi state) | **76 — trong đó 56 ẩn** |
+| Chạm tới vốn | 37 — trong đó 29 ẩn |
 
-Ghi chú: tài khoản báo `canWithdraw ✅`, nhưng đó là quyền của **tài khoản**, không phải scope của **agent**. Hai chuyện khác nhau — danh sách tool mới là câu trả lời.
+Theo prefix: `futures_usds` 95 · `margin` 65 · `futures_coin` 64 · `spot` 48 · `wallet` 33 · `convert` 9 · `analysis` 1 · `sub_account` 1.
+
+**Năm kết luận:**
+
+1. **Chặn theo `tool_name` là thủng.** Phải bóc `arguments.toolName` khi tool là `tool_execute`. 56/76 tool ghi đi đường này.
+2. **Không có tool rút tài sản ra khỏi Binance.** `fetchWithdrawAddressList`, `fetchWithdrawQuota`, `withdrawHistory` đều chỉ đọc. Threat model là phá giá trị tại chỗ, không phải bị cuỗm.
+3. **Đúng một tool dịch chuyển tài sản:** `wallet_userUniversalTransfer` (Spot ↔ Futures ↔ Margin ↔ Funding ↔ Options ↔ PM, hai chiều). Lộ trực tiếp trong `tools/list`.
+4. **Không dùng permission tag của Binance để phân loại** — sai cả hai chiều (`wallet_userUniversalTransfer` gắn `USER_DATA` nhưng chuyển tiền; `futures_coin_getPositionMarginChangeHistory` gắn `TRADE` nhưng chỉ đọc).
+5. **Bốn tool đúc/sửa API key:** `margin_createSpecialKey`, `margin_editIpForSpecialKey`, `margin_deleteSpecialKey`, `margin_exitSpecialKeyMode` — đều ẩn. Key tạo qua đây **không đi qua MCP server nữa**, thoát vĩnh viễn khỏi mọi guard. Nguy hiểm nhất với một dự án guardrail.
+
+**Chưa kiểm chứng:** `tool_execute` có gọi được tool nằm ngoài kết quả enumeration không (mô tả nói "any visible tool"). Vì chưa biết → allowlist là lựa chọn duy nhất an toàn.
+
+**Lưu ý:** MCP server instructions mô tả quy ước tên là `{verb}_{product}_{operation}` (vd `create_spot_newOrder`), nhưng tên thật quan sát được là `spot_newOrder`. Docs lệch thực tế — tin danh sách, đừng tin mô tả.
 
 ## 6. Ghi chú khác
 
