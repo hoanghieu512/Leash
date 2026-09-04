@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+
+# Runtime state — never commit a real trading account's state or audit trail
+state.json
+audit.jsonl
+fixtures/BLOCK_MATCH.txt
