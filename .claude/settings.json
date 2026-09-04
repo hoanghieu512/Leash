@@ -2,13 +2,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__.*",
+        "matcher": "mcp__binance-mcp-server__.*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/bin/leash-recon-hook.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/leash-hook.mjs\"",
             "timeout": 5,
-            "statusMessage": "Leash recon: capturing MCP payload"
+            "statusMessage": "Leash đang kiểm tra lệnh"
           }
         ]
       }

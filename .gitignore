@@ -6,3 +6,6 @@ dist/
 state.json
 audit.jsonl
 fixtures/BLOCK_MATCH.txt
+
+# Build artifact — chạy npm run build
+bin/leash-hook.mjs

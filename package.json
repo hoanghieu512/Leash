@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "description": "A policy layer that keeps a trading agent disciplined on Binance Agent OS",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild src/hook/cli.ts --bundle --packages=external --platform=node --format=esm --outfile=bin/leash-hook.mjs",
+    "setup": "npm install && npm run build"
   },
   "dependencies": {
     "yaml": "^2.6.1",
