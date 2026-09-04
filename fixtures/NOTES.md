@@ -29,29 +29,53 @@
 | Ticker / giá 24h | `mcp__binance-mcp-server__spot_ticker24hr` |
 | Kline | |
 
-## 3. Hình dạng `tool_input` của lệnh spot
+## 3. Hình dạng `tool_input` của lệnh spot — ĐÃ CÓ (04/09)
 
-Tên trường thật (điền theo payload quan sát được):
+Tool đặt lệnh spot: `mcp__binance-mcp-server__spot_newOrder`
 
-- symbol: 
-- side: 
-- loại lệnh (market/limit): 
-- số lượng theo coin: 
-- số lượng theo USDT: 
-- giá: 
+```json
+{"symbol":"BTCUSDT","side":"BUY","type":"MARKET","quoteOrderQty":12,"newOrderRespType":"FULL"}
+{"symbol":"BTCUSDT","side":"SELL","type":"MARKET","quantity":0.00007,"newOrderRespType":"FULL"}
+{"symbol":"BTCUSDT","side":"SELL","type":"MARKET","quoteOrderQty":5.8,"newOrderRespType":"FULL"}
+```
 
-## 4. Response khi lệnh khớp
+| Ý nghĩa | Trường |
+|---|---|
+| symbol | `symbol` |
+| chiều | `side` — `BUY` / `SELL` |
+| loại lệnh | `type` — `MARKET` (đã quan sát) |
+| số lượng theo coin | `quantity` |
+| **số lượng theo USDT** | `quoteOrderQty` ← đường tính notional trực tiếp |
+| kiểu response | `newOrderRespType: "FULL"` |
 
-- orderId nằm ở trường: 
-- giá khớp nằm ở trường: 
-- số lượng khớp nằm ở trường: 
-- có trả về phí không: 
+### 3b. Cùng lệnh đó đi qua cửa hậu `tool_execute`
 
-## 5. Lỗi từ sàn
+```json
+{"toolName":"spot.newOrder","arguments":{"symbol":"BTCUSDT","side":"BUY","type":"MARKET","quoteOrderQty":12,"newOrderRespType":"FULL"}}
+```
 
-- Lệnh dưới min notional → thông điệp: 
-- Min notional thực tế của BTCUSDT: 
-- Phân biệt lỗi sàn với lệnh bị Leash chặn bằng cách nào: 
+⚠️ **Tên tool bên trong dùng DẤU CHẤM (`spot.newOrder`), tool MCP trực tiếp dùng GẠCH DƯỚI (`spot_newOrder`).** Allowlist so khớp thẳng sẽ trượt — adapter phải chuẩn hoá hai dạng về một trước khi so.
+
+Đã xác nhận bằng **lệnh khớp thật** (orderId 66234998469, 0.00014 BTC @ 80,963.65): cùng một hành động, ở tầng hook nhìn ra hai `tool_name` hoàn toàn khác nhau.
+
+## 4. Response khi lệnh khớp — ĐÃ CÓ
+
+- orderId: quan sát được (vd `66234582804`, `66234599486`, `66234998469`)
+- Lệnh market BUY 12 USDT khớp 0.00014 BTC @ 81,061.44 → chi 11.34860160 USDT
+- Phí: thu bằng **coin nhận được** khi BUY (0.00000014 BTC), thu bằng **USDT** khi SELL (0.00567256 USDT), tỷ lệ 0.1%
+- `stepSize` BTCUSDT = 0.00001 BTC → lệnh 12 USDT không tiêu hết 12 vì 0.00015 BTC sẽ vượt
+
+## 5. Lỗi từ sàn — ĐÃ CÓ
+
+| Tình huống | Mã | Thông điệp |
+|---|---|---|
+| Dưới min notional (BUY 1 USDT) | **-1013** | `Filter failure: NOTIONAL` |
+| `quantity: 0.00007` | **-1100** | `Illegal characters` — giá trị bị serialize thành `7e-05` trên đường xuống sàn |
+
+- **minNotional BTCUSDT = 5.00 USDT**, `applyMinToMarket = true` (áp cho cả lệnh market)
+- Phân biệt "Leash chặn" với "sàn từ chối": lỗi sàn luôn có mã dạng `-1xxx` và tới **sau** khi request rời máy; Leash chặn thì không có mã số nào, và câu giải thích do Leash viết.
+
+⚠️ **Ghi chú về `7e-05`:** payload hook vẫn giữ số đúng (`0.00007`) — lỗi phát sinh ở tầng MCP server serialize xuống Binance, không phải ở chỗ Leash đọc. Nên Leash **không cần** xử lý dạng scientific notation khi tính notional, nhưng cần biết hiện tượng này tồn tại: agent gặp `-1100` sẽ có xu hướng đổi sang `quoteOrderQty` để né, tức **cùng một ý định có thể tới dưới hai hình dạng tham số khác nhau**. Adapter phải tính được notional từ cả hai.
 
 ## 5b. Bề mặt tool — ĐÃ QUÉT (04/09)
 
