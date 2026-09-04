@@ -6,6 +6,7 @@ import { emptyState } from "../../src/domain/types.js";
 import { decide, type HookDeps } from "../../src/hook/preToolUse.js";
 import { saveState } from "../../src/state/store.js";
 import { loadState } from "../../src/state/store.js";
+import { readAudit } from "../../src/audit/report.js";
 import { T0 } from "../helpers.js";
 
 let dir: string;
@@ -32,10 +33,13 @@ const order = (input: Record<string, unknown>) => ({
   tool_input: input,
 });
 
-function declare(notional: number) {
+function declare(notional: number, opts: { withPosition?: boolean } = {}) {
   const s = emptyState("2026-09-05", 100);
   saveState(deps.statePath, {
     ...s,
+    ...(opts.withPosition === true
+      ? { positions: { BTCUSDT: { symbol: "BTCUSDT", quantity: 0.001, avgCost: 90000 } } }
+      : {}),
     tickets: [{ symbol: "BTCUSDT", side: "BUY", notionalUsdt: notional, reason: "declared", ts: T0, consumed: false }],
   });
 }
@@ -46,6 +50,7 @@ beforeEach(() => {
   deps = {
     policyPath: join(dir, "leash.policy.yaml"),
     statePath: join(dir, "state.json"),
+    auditPath: join(dir, "audit.jsonl"),
     now: T0,
     fetchMarks: async () => ({ BTCUSDT: 81000 }),
   };
@@ -107,11 +112,14 @@ describe("denials", () => {
   });
 
   it("blocks when it runs out of time", async () => {
-    declare(12);
+    declare(12, { withPosition: true }); // an open position is what forces a price lookup
+    // A fake clock the price lookup pushes past the budget — deterministic, no racing.
+    let elapsed = 0;
     const slow: HookDeps = {
       ...deps,
       budgetMs: 10,
-      fetchMarks: () => new Promise((r) => setTimeout(() => r({}), 80)),
+      clock: () => elapsed,
+      fetchMarks: async () => { elapsed += 50; return {}; },
     };
     const out = await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), slow);
 
@@ -156,5 +164,77 @@ describe("allowances", () => {
     const out = await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), offline);
 
     expect(out).toEqual({});
+  });
+});
+
+describe("audit trail", () => {
+  it("records the denial, with the rule that caused it", async () => {
+    await decide(order({ symbol: "PEPEUSDT", side: "BUY", quoteOrderQty: 5 }), deps);
+    const { entries } = readAudit(deps.auditPath);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.verdict).toBe("DENY");
+    expect(entries[0]?.rule).toBe("symbol_allowlist");
+  });
+
+  it("records what it let through, together with the reason the agent declared", async () => {
+    declare(12);
+    await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), deps);
+    const { entries } = readAudit(deps.auditPath);
+
+    expect(entries[0]?.verdict).toBe("ALLOW");
+    expect(entries[0]?.agent_reason).toBe("declared");
+  });
+
+  it("writes nothing for a read — the trail is about decisions, not traffic", async () => {
+    await decide(
+      { tool_name: "mcp__binance-mcp-server__spot_ticker24hr", tool_input: { symbol: "BTCUSDT" } },
+      deps,
+    );
+    expect(readAudit(deps.auditPath).entries).toHaveLength(0);
+  });
+});
+
+describe("the trail must be complete", () => {
+  it("records a timeout denial too — an unlogged block is a block nobody can audit", async () => {
+    declare(12, { withPosition: true });
+    let elapsed = 0;
+    const slow: HookDeps = {
+      ...deps,
+      budgetMs: 10,
+      clock: () => elapsed,
+      fetchMarks: async () => { elapsed += 50; return {}; },
+    };
+    await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), slow);
+    const { entries } = readAudit(deps.auditPath);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.verdict).toBe("DENY");
+    expect(entries[0]?.rule).toBe("time_budget");
+  });
+
+  it("does not touch the network when there is nothing to price", async () => {
+    declare(12);
+    let called = false;
+    const watched: HookDeps = {
+      ...deps,
+      fetchMarks: async () => { called = true; return { BTCUSDT: 81000 }; },
+    };
+    // No open positions, and the order states its own size in USDT.
+    await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), watched);
+
+    expect(called).toBe(false);
+  });
+
+  it("does reach for prices when a position needs marking to market", async () => {
+    declare(12, { withPosition: true });
+    let called = false;
+    const watched: HookDeps = {
+      ...deps,
+      fetchMarks: async () => { called = true; return { BTCUSDT: 81000 }; },
+    };
+    await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), watched);
+
+    expect(called).toBe(true);
   });
 });

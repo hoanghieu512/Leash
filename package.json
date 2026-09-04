@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "build": "esbuild src/hook/cli.ts --bundle --packages=external --platform=node --format=esm --outfile=bin/leash-hook.mjs",
-    "setup": "npm install && npm run build"
+    "setup": "npm install && npm run build",
+    "report": "tsx src/audit/reportCli.ts"
   },
   "dependencies": {
     "yaml": "^2.6.1",

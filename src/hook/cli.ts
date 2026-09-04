@@ -39,6 +39,7 @@ try {
 const out = await decide(input, {
   policyPath: join(ROOT, "leash.policy.yaml"),
   statePath: join(ROOT, "state.json"),
+  auditPath: join(ROOT, "audit.jsonl"),
   now: Date.now(),
   fetchMarks,
 });

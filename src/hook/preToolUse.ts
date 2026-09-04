@@ -1,8 +1,9 @@
 import { toIntent, type HookPayload } from "../adapters/binanceTool.js";
-import { isDenied } from "../domain/types.js";
+import { appendAudit, buildEntry } from "../audit/log.js";
+import { deny, isDenied, type LeashState, type OrderIntent } from "../domain/types.js";
 import { loadPolicy } from "../policy/load.js";
 import { evaluate } from "../rules/index.js";
-import { consumeTicket, rollDayIfNeeded } from "../state/reduce.js";
+import { consumeTicket, findMatchingTicket, rollDayIfNeeded } from "../state/reduce.js";
 import { loadState, saveState } from "../state/store.js";
 
 /** The shape Claude Code hands a PreToolUse hook, as captured live on 04/09. */
@@ -23,11 +24,14 @@ export interface HookOutput {
 export interface HookDeps {
   policyPath: string;
   statePath: string;
+  auditPath: string;
   now: number;
   /** Best-effort public prices. Failure here must never block the session. */
   fetchMarks: (symbols: string[]) => Promise<Record<string, number>>;
   /** Wall-clock budget for the whole decision. */
   budgetMs?: number;
+  /** Elapsed-time source, injectable so timeout behaviour can be tested without racing a real clock. */
+  clock?: () => number;
 }
 
 const ALLOW: HookOutput = {};
@@ -51,7 +55,8 @@ function denyOutput(reason: string): HookOutput {
  */
 export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutput> {
   const budget = deps.budgetMs ?? 1000;
-  const deadline = Date.now() + budget;
+  const clock = deps.clock ?? Date.now;
+  const deadline = clock() + budget;
 
   // A tool name that is present but belongs elsewhere is normal — the matcher may
   // be broad. A tool name that is missing or not a string is not normal: something
@@ -71,21 +76,30 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
     const intentNoMarks = toIntent(input as HookPayload, state, { now: deps.now });
     if (intentNoMarks === null) return ALLOW; // a read, or another server's tool
 
-    // Only now is it worth spending time on prices.
-    const symbols = new Set(Object.keys(state.positions));
-    if (intentNoMarks.symbol !== null) symbols.add(intentNoMarks.symbol.toUpperCase());
-    const marks = await withDeadline(deps.fetchMarks([...symbols]), deadline - Date.now(), {});
+    // Prices cost a network round trip, so only pay for them when they change an
+    // answer: to mark open positions to market, or to size an order that states
+    // neither a quote amount nor a price. Most orders need neither.
+    const marks = needsPrices(state, intentNoMarks)
+      ? await withDeadline(deps.fetchMarks(symbolsToPrice(state, intentNoMarks)), deadline - clock(), {})
+      : {};
 
     const ctx = { now: deps.now, marks };
     const intent = toIntent(input as HookPayload, state, ctx) ?? intentNoMarks;
 
-    if (Date.now() > deadline) {
-      return denyOutput(
-        "Leash hết thời gian đánh giá lệnh này nên chặn để an toàn. Thử lại sau vài giây.",
-      );
-    }
+    // Out of time counts as a decision, and every decision goes in the trail: a
+    // block nobody can audit is indistinguishable from no block at all.
+    const decision = clock() >= deadline
+      ? deny(
+          "time_budget",
+          "Leash hết thời gian đánh giá lệnh này nên chặn để an toàn. Thử lại sau vài giây.",
+          [],
+        )
+      : evaluate(intent, state, policy, ctx);
 
-    const decision = evaluate(intent, state, policy, ctx);
+    // Read the declaration before it is spent, so the trail records why the
+    // agent said it was doing this.
+    const reason = findMatchingTicket(state, intent, deps.now)?.reason ?? null;
+    appendAudit(deps.auditPath, buildEntry(intent, state, decision, reason, deps.now));
 
     if (isDenied(decision)) {
       return denyOutput(`[Leash · ${decision.rule}] ${decision.detail}`);
@@ -117,4 +131,17 @@ async function withDeadline<T>(p: Promise<T>, ms: number, fallback: T): Promise<
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
+}
+
+/** Which symbols are worth a price lookup for this decision. */
+function symbolsToPrice(state: LeashState, intent: OrderIntent): string[] {
+  const symbols = new Set(Object.keys(state.positions));
+  if (intent.symbol !== null && intent.notionalUsdt === null) {
+    symbols.add(intent.symbol.toUpperCase());
+  }
+  return [...symbols];
+}
+
+function needsPrices(state: LeashState, intent: OrderIntent): boolean {
+  return symbolsToPrice(state, intent).length > 0;
 }
