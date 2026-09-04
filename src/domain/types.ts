@@ -36,6 +36,13 @@ export interface OrderIntent {
   quantity: number | null;
   /** True when this shrinks or closes an existing position. Such orders survive the kill switch. */
   reduceOnly: boolean;
+  /**
+   * The tool's own arguments, already unwrapped from tool_execute. Rules that
+   * police non-order tools — a wallet transfer, a credential mint — read their
+   * specifics from here rather than from fields invented on OrderIntent for
+   * one caller's benefit.
+   */
+  args: Readonly<Record<string, unknown>>;
   ts: number;
 }
 

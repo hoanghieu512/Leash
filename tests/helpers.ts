@@ -32,6 +32,7 @@ export function intent(over: Partial<OrderIntent> = {}): OrderIntent {
     notionalUsdt: 12,
     quantity: null,
     reduceOnly: false,
+    args: {},
     ts: T0,
     ...over,
   };
