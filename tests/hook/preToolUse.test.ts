@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -33,10 +33,11 @@ const order = (input: Record<string, unknown>) => ({
   tool_input: input,
 });
 
-function declare(notional: number, opts: { withPosition?: boolean } = {}) {
+function declare(notional: number, opts: { withPosition?: boolean; lossStreak?: number } = {}) {
   const s = emptyState("2026-09-05", 100);
   saveState(deps.statePath, {
     ...s,
+    ...(opts.lossStreak !== undefined ? { lossStreak: opts.lossStreak } : {}),
     ...(opts.withPosition === true
       ? { positions: { BTCUSDT: { symbol: "BTCUSDT", quantity: 0.001, avgCost: 90000 } } }
       : {}),
@@ -236,5 +237,20 @@ describe("the trail must be complete", () => {
     await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), watched);
 
     expect(called).toBe(true);
+  });
+});
+
+describe("tampering", () => {
+  it("blocks everything and records it when state was edited outside Leash", async () => {
+    declare(12, { lossStreak: 3 });
+    const edited = JSON.parse(readFileSync(deps.statePath, "utf8")) as Record<string, unknown>;
+    edited["lossStreak"] = 0; // the edit that would unlock martingale
+    writeFileSync(deps.statePath, JSON.stringify(edited), "utf8");
+
+    const out = await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), deps);
+
+    expect(out.hookSpecificOutput?.permissionDecision).toBe("deny");
+    expect(readAudit(deps.auditPath).entries[0]?.rule).toBe("leash_unavailable");
+    expect(readAudit(deps.auditPath).entries[0]?.detail).toMatch(/chữ ký|sửa/i);
   });
 });

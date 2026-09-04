@@ -76,3 +76,24 @@ export function appendAudit(path: string, entry: AuditEntry): void {
 function round(n: number): number {
   return Math.round(n * 1e8) / 1e8;
 }
+
+/**
+ * A refusal that happened before any order could be understood — unreadable
+ * config, tampered state, a blown budget. These matter most precisely because
+ * no intent was parsed: something went wrong upstream of the rules.
+ */
+export function buildSystemEntry(rule: string, detail: string, now: number): AuditEntry {
+  return {
+    ts: new Date(now).toISOString(),
+    tool: "-",
+    raw_tool: "-",
+    symbol: null,
+    side: null,
+    notional: null,
+    agent_reason: null,
+    verdict: "DENY",
+    rule,
+    detail,
+    state: { daily_pnl_usdt: 0, orders_last_hour: 0, loss_streak: 0, kill_switch: false },
+  };
+}

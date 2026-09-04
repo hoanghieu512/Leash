@@ -25,7 +25,8 @@ describe("state store", () => {
     });
     saveState(path, s);
 
-    expect(loadState(path, NOW, 100)).toEqual(s);
+    // The file also carries a signature; everything Leash reasons about must survive.
+    expect(loadState(path, NOW, 100)).toMatchObject(s);
   });
 
   it("treats a missing file as a first run, not an error", () => {
@@ -53,6 +54,7 @@ describe("state store", () => {
     const { readdirSync } = await import("node:fs");
     saveState(path, emptyState("2026-09-05", 100));
 
-    expect(readdirSync(dir)).toEqual(["state.json"]);
+    expect(readdirSync(dir).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+    expect(readdirSync(dir).sort()).toEqual(["state.json", "state.json.key"]);
   });
 });

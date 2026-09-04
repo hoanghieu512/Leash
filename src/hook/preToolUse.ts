@@ -1,5 +1,5 @@
 import { toIntent, type HookPayload } from "../adapters/binanceTool.js";
-import { appendAudit, buildEntry } from "../audit/log.js";
+import { appendAudit, buildEntry, buildSystemEntry } from "../audit/log.js";
 import { deny, isDenied, type LeashState, type OrderIntent } from "../domain/types.js";
 import { loadPolicy } from "../policy/load.js";
 import { evaluate } from "../rules/index.js";
@@ -111,9 +111,11 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
     saveState(deps.statePath, consumeTicket(state, intent, deps.now));
     return ALLOW;
   } catch (err) {
-    return denyOutput(
-      `[Leash] Không đánh giá được lệnh: ${(err as Error).message} — chặn vì không chắc chắn.`,
-    );
+    const detail = (err as Error).message;
+    // No intent was parsed, so this failure would otherwise leave no trace at
+    // all — and a tampered state file is exactly the event worth recording.
+    appendAudit(deps.auditPath, buildSystemEntry("leash_unavailable", detail, deps.now));
+    return denyOutput(`[Leash] Không đánh giá được lệnh: ${detail}`);
   }
 }
 
