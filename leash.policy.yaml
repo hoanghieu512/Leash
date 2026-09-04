@@ -1,0 +1,18 @@
+# Leash — luật giao dịch của huynh, viết ra để đọc được, không phải để chạy.
+# Mọi thay đổi ở đây có hiệu lực ngay ở lệnh kế tiếp.
+
+profile: conservative
+capital_usdt: 100
+
+limits:
+  max_notional_per_order: 15      # 15% tài khoản mỗi lệnh; min notional của Binance là 5 USDT
+  max_orders_per_hour: 6
+  min_seconds_between_orders: 60
+  symbol_allowlist: [BTCUSDT, ETHUSDT, BNBUSDT]
+  markets: [spot]                 # margin & futures bị chặn thẳng
+
+behavior:
+  daily_loss_kill_switch_pct: 5   # chạm ngưỡng -> khoá mở mới tới 00:00 UTC, vẫn cho đóng vị thế
+  revenge_cooldown_minutes: 15    # sau một lệnh đóng lỗ, cấm vào lại chính symbol đó
+  no_size_up_after_losses: 2      # 2 lệnh lỗ liên tiếp -> cấm tăng size (chống martingale)
+  require_reason: true            # không khai lý do qua leash.check_order thì không được đặt lệnh
