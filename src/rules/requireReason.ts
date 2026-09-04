@@ -20,16 +20,16 @@ export const requireReason: Rule = {
     if (!policy.behavior.requireReason) return null;
     if (findMatchingTicket(state, intent, ctx.now) !== undefined) return null;
 
-    const size = intent.notionalUsdt === null ? "<số USDT>" : num(intent.notionalUsdt);
+    const size = intent.notionalUsdt === null ? "<usdt amount>" : num(intent.notionalUsdt);
     const symbol = intent.symbol ?? "<symbol>";
     const side = intent.side ?? "<BUY|SELL>";
 
     return {
       rule: this.name,
       detail:
-        `Lệnh này chưa được khai báo. Gọi leash.check_order(symbol="${symbol}", side="${side}", ` +
-        `notional=${size}, reason="...") kèm lý do, rồi đặt lệnh trong vòng 2 phút. ` +
-        `Mỗi khai báo dùng được đúng một lần.`,
+        `This order was not declared. Call leash.check_order(symbol="${symbol}", side="${side}", ` +
+        `notional=${size}, reason="...") with your reasoning, then place the order within 2 minutes. ` +
+        `Each declaration covers exactly one order.`,
     };
   },
 };

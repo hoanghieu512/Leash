@@ -30,7 +30,7 @@ try {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: "[Leash] Không đọc được dữ liệu hook gửi tới — chặn vì không chắc chắn.",
+      permissionDecisionReason: "[Leash] Could not parse the hook payload. Refused, because it is not clear what was about to run.",
     },
   }));
   process.exit(0);

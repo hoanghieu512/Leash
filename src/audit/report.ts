@@ -53,26 +53,26 @@ export function summarise(entries: AuditEntry[], malformed = 0): Report {
 }
 
 export function formatReport(r: Report): string {
-  if (r.total === 0) return "Chưa có quyết định nào được ghi lại.";
+  if (r.total === 0) return "No decisions recorded yet.";
 
   const lines = [
     "",
-    "  LEASH — sổ quyết định",
+    "  LEASH — decision ledger",
     "  ─────────────────────────────────",
-    `  Tổng lệnh đi qua Leash   ${r.total}`,
-    `  Cho qua                  ${r.allowed}`,
-    `  Chặn                     ${r.denied}`,
-    `  Giá trị đã chặn          ${r.notionalBlocked.toFixed(2)} USDT`,
+    `  Calls judged        ${r.total}`,
+    `  Allowed             ${r.allowed}`,
+    `  Refused             ${r.denied}`,
+    `  Value kept back     ${r.notionalBlocked.toFixed(2)} USDT`,
   ];
 
   if (r.byRule.length > 0) {
-    lines.push("", "  Luật nào chặn nhiều nhất");
+    lines.push("", "  Rules that fired most");
     for (const { rule, count } of r.byRule) {
       lines.push(`    ${count.toString().padStart(3)} × ${rule}`);
     }
   }
   if (r.malformedLines > 0) {
-    lines.push("", `  (bỏ qua ${r.malformedLines} dòng hỏng)`);
+    lines.push("", `  (${r.malformedLines} malformed line(s) skipped)`);
   }
   lines.push("");
   return lines.join("\n");

@@ -6,14 +6,14 @@ export const symbolAllowlist: Rule = {
     const list = policy.limits.symbolAllowlist;
 
     if (intent.symbol === null) {
-      return { rule: this.name, detail: `Lệnh không nêu symbol. Chỉ cho phép: ${list.join(", ")}.` };
+      return { rule: this.name, detail: `Order names no symbol. Allowed: ${list.join(", ")}.` };
     }
 
     const symbol = intent.symbol.toUpperCase();
     if (!list.includes(symbol)) {
       return {
         rule: this.name,
-        detail: `${symbol} không nằm trong danh sách cho phép (${list.join(", ")}).`,
+        detail: `${symbol} is not on the allowlist (${list.join(", ")}).`,
       };
     }
     return null;

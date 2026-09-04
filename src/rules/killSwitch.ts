@@ -15,8 +15,8 @@ export const killSwitch: Rule = {
     return {
       rule: this.name,
       detail:
-        `Kill switch đang bật — mọi lệnh mở mới bị khoá cho tới khi có người tắt nó. ` +
-        `Lệnh đóng vị thế vẫn đi qua được.`,
+        `The kill switch is on. No new or larger position may be opened until someone turns ` +
+        `it off. Orders that close a position still go through.`,
     };
   },
 };

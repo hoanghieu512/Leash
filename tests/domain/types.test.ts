@@ -27,7 +27,7 @@ describe("emptyState", () => {
 
 describe("decisions", () => {
   it("carries the rule name and a human-readable detail when denying", () => {
-    const d = deny("max_notional_per_order", "180 USDT vượt hạn mức 15 USDT mỗi lệnh", ["spot_only"]);
+    const d = deny("max_notional_per_order", "180 USDT exceeds the 15 USDT per-order limit", ["spot_only"]);
 
     expect(isDenied(d)).toBe(true);
     if (!isDenied(d)) throw new Error("unreachable");

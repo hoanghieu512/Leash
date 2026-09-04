@@ -27,9 +27,10 @@ export const neverMintCredentials: HardRule = {
     return {
       rule: "never_mint_credentials",
       detail:
-        `Tool "${intent.canonicalTool}" tạo hoặc sửa API key. Key sinh ra từ đường này không đi qua ` +
-        `MCP server nữa, nghĩa là mọi guard của Leash hết hiệu lực với nó — vĩnh viễn, kể cả sau khi ` +
-        `tắt agent. Đây là luật cứng, không có trong file cấu hình và không tắt được.`,
+        `Tool "${intent.canonicalTool}" creates or alters an API key. A key minted this way no longer ` +
+        `travels through the MCP server, so every Leash guard stops applying to it — permanently, and ` +
+        `even after the agent is switched off. This is a hard rule: it is not in the config file and ` +
+        `cannot be turned off.`,
     };
   },
 };

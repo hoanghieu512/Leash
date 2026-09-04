@@ -12,8 +12,8 @@ export const spotOnly: Rule = {
       return {
         rule: this.name,
         detail:
-          `Không nhận diện được tool "${intent.canonicalTool}" thuộc thị trường nào. ` +
-          `Leash chỉ cho phép ${allowed.join(", ")}, và chặn mọi thứ chưa biết.`,
+          `Tool "${intent.canonicalTool}" belongs to no market Leash recognises. ` +
+          `Only ${allowed.join(", ")} is permitted, and anything unrecognised is refused.`,
       };
     }
 
@@ -21,8 +21,8 @@ export const spotOnly: Rule = {
       return {
         rule: this.name,
         detail:
-          `Lệnh thuộc thị trường ${intent.market} (tool "${intent.canonicalTool}"), ` +
-          `chỉ ${allowed.join(", ")} được phép.`,
+          `This order targets the ${intent.market} market (tool "${intent.canonicalTool}"). ` +
+          `Only ${allowed.join(", ")} is permitted.`,
       };
     }
     return null;

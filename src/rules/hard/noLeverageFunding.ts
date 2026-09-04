@@ -25,8 +25,8 @@ export const noLeverageFunding: HardRule = {
       return {
         rule: "no_leverage_funding",
         detail:
-          `Lệnh chuyển ví không nêu rõ "type", nên không xác định được tiền đi về đâu. ` +
-          `Leash chặn mọi chuyển khoản không đọc được đích.`,
+          `This wallet transfer states no "type", so its destination cannot be determined. ` +
+          `Leash refuses any transfer whose destination it cannot read.`,
       };
     }
 
@@ -36,9 +36,9 @@ export const noLeverageFunding: HardRule = {
     return {
       rule: "no_leverage_funding",
       detail:
-        `Chuyển khoản "${type}" đưa tiền ra khỏi ví Spot tới nơi có đòn bẩy. ` +
-        `Chỉ cho phép chiều ngược lại (về Spot hoặc Funding). ` +
-        `Đây là luật cứng, không tắt được bằng cấu hình.`,
+        `Transfer "${type}" moves funds out of the Spot wallet into a leveraged one. ` +
+        `Only the reverse direction is allowed (back to Spot or Funding). ` +
+        `This is a hard rule and cannot be turned off by configuration.`,
     };
   },
 };

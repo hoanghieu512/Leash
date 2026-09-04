@@ -24,8 +24,8 @@ export const noSizeUpAfterLosses: Rule = {
       return {
         rule: this.name,
         detail:
-          `Đang trong chuỗi ${num(state.lossStreak)} lệnh lỗ liên tiếp và không xác định được ` +
-          `giá trị lệnh này, nên không thể khẳng định nó không lớn hơn ${num(ceiling)} USDT.`,
+          `${num(state.lossStreak)} losing trades in a row, and this order's size could not be ` +
+          `determined — so it cannot be shown to be no larger than ${num(ceiling)} USDT.`,
       };
     }
 
@@ -34,9 +34,9 @@ export const noSizeUpAfterLosses: Rule = {
     return {
       rule: this.name,
       detail:
-        `Đang trong chuỗi ${num(state.lossStreak)} lệnh lỗ liên tiếp. ` +
-        `Lệnh ${num(intent.notionalUsdt)} USDT lớn hơn lệnh vừa lỗ (${num(ceiling)} USDT) — ` +
-        `gấp size sau khi thua là cách nhanh nhất biến một ngày xấu thành tài khoản trống.`,
+        `${num(state.lossStreak)} losing trades in a row. This ${num(intent.notionalUsdt)} USDT order ` +
+        `is larger than the one that just lost (${num(ceiling)} USDT) — sizing up after a loss is the ` +
+        `fastest way to turn a bad afternoon into an empty account.`,
     };
   },
 };

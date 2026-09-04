@@ -75,7 +75,7 @@ export function evaluate(
 /** A rule that crashes is a rule with no opinion, and no opinion means no. */
 function ruleCrashed(name: string, err: unknown): string {
   return (
-    `Luật "${name}" lỗi khi chạy: ${(err as Error).message}. ` +
-    `Leash chặn lệnh khi không tự tin đánh giá được — một guardrail hỏng phải nghiêng về từ chối.`
+    `Rule "${name}" threw while evaluating: ${(err as Error).message}. ` +
+    `Leash refuses whatever it cannot confidently judge — a broken guardrail must lean towards no.`
   );
 }

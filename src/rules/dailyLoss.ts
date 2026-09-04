@@ -39,14 +39,15 @@ export const dailyLoss: Rule = {
     if (lossPct <= limit) return null;
 
     const caveat = marksMissing
-      ? " (chưa tính được lãi/lỗ chưa thực hiện vì thiếu giá tham chiếu, con số thật có thể xấu hơn)"
+      ? " (unrealised P&L could not be priced, so the real figure may be worse)"
       : "";
 
     return {
       rule: this.name,
       detail:
-        `Hôm nay đang lỗ ${num(lossPct)}% so với vốn đầu ngày ${num(state.dayStartEquity)} USDT, ` +
-        `vượt ngưỡng ${num(limit)}%${caveat}. Khoá mở lệnh mới tới 00:00 UTC — lệnh đóng vị thế vẫn được phép.`,
+        `Down ${num(lossPct)}% today against opening equity of ${num(state.dayStartEquity)} USDT, ` +
+        `past the ${num(limit)}% threshold${caveat}. Opening is locked until 00:00 UTC — ` +
+        `orders that close a position are still allowed.`,
     };
   },
 };

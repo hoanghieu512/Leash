@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LEASH — bảng kiểm soát</title>
+<title>LEASH — control panel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;500;700;800&display=swap" rel="stylesheet">
@@ -177,15 +177,15 @@
         <span class="lamp"></span>
         <span class="verdict" id="verdict">ARMED</span>
       </div>
-      <p class="verdict-note" id="note">Đang canh mọi lệnh đi qua Binance MCP.</p>
+      <p class="verdict-note" id="note">Watching every order that crosses the Binance MCP boundary.</p>
       <button class="kill" id="kill" data-on="false">KILL SWITCH</button>
     </section>
 
     <section class="gauges">
       <div class="gauge">
         <div class="gauge-head">
-          <span class="gauge-label">LỖ TRONG NGÀY</span>
-          <span class="gauge-limit" id="pnl-limit">ngưỡng khoá 5%</span>
+          <span class="gauge-label">LOSS TODAY</span>
+          <span class="gauge-limit" id="pnl-limit">lock threshold 5%</span>
           <span class="gauge-value" id="pnl">0.00%</span>
         </div>
         <div class="track"><div class="fill" id="pnl-fill" style="width:0%"></div></div>
@@ -193,8 +193,8 @@
 
       <div class="gauge">
         <div class="gauge-head">
-          <span class="gauge-label">LỆNH TRONG GIỜ</span>
-          <span class="gauge-limit" id="ord-limit">tối đa 6</span>
+          <span class="gauge-label">ORDERS THIS HOUR</span>
+          <span class="gauge-limit" id="ord-limit">max 6</span>
           <span class="gauge-value" id="orders">0</span>
         </div>
         <div class="track"><div class="fill" id="ord-fill" style="width:0%"></div></div>
@@ -202,8 +202,8 @@
 
       <div class="gauge">
         <div class="gauge-head">
-          <span class="gauge-label">CHỜ LỆNH KẾ TIẾP</span>
-          <span class="gauge-limit" id="cd-limit">giãn cách 60s</span>
+          <span class="gauge-label">COOLDOWN</span>
+          <span class="gauge-limit" id="cd-limit">60s spacing</span>
           <span class="gauge-value" id="cooldown">0s</span>
         </div>
         <div class="track"><div class="fill" id="cd-fill" style="width:0%"></div></div>
@@ -215,10 +215,10 @@
 
   <section class="feed">
     <div class="feed-head">
-      <span>SỔ QUYẾT ĐỊNH</span>
+      <span>DECISION LEDGER</span>
       <span class="feed-stat" id="feed-stat"></span>
     </div>
-    <div class="rows" id="rows"><div class="empty">CHƯA CÓ LỆNH NÀO ĐI QUA</div></div>
+    <div class="rows" id="rows"><div class="empty">NOTHING HAS CROSSED YET</div></div>
   </section>
 
 <script>
@@ -241,46 +241,46 @@ function render(s) {
 
   $("verdict").textContent = s.locked ? "LOCKED" : "ARMED";
   $("note").textContent = s.tampered
-    ? "State đã bị sửa ngoài Leash. Mọi lệnh bị chặn cho tới khi khôi phục."
+    ? "State was modified outside Leash. Every order is refused until it is restored."
     : s.locked
-      ? "Kill switch đang bật. Lệnh mở mới bị chặn — lệnh đóng vị thế vẫn đi qua được."
-      : "Đang canh mọi lệnh đi qua Binance MCP.";
+      ? "Kill switch is on. Opening is blocked — orders that close a position still go through."
+      : "Watching every order that crosses the Binance MCP boundary.";
 
   $("banner").innerHTML = s.tampered
-    ? '<div class="banner"><b>CẢNH BÁO GIẢ MẠO</b> — ' + s.tampered + "</div>"
+    ? '<div class="banner"><b>TAMPER DETECTED</b> — ' + s.tampered + "</div>"
     : "";
 
   const kill = $("kill");
   kill.dataset.on = String(s.locked && !s.tampered);
-  kill.textContent = s.locked ? "MỞ KHOÁ" : "KILL SWITCH";
+  kill.textContent = s.locked ? "RELEASE" : "KILL SWITCH";
   kill.disabled = Boolean(s.tampered);
 
   $("pnl").textContent = (s.pnl >= 0 ? "+" : "") + s.pnl.toFixed(2) + " USDT";
-  $("pnl-limit").textContent = "ngưỡng khoá " + s.lossLimit + "%  ·  hiện " + s.lossPct.toFixed(2) + "%";
+  $("pnl-limit").textContent = "lock threshold " + s.lossLimit + "%  ·  now " + s.lossPct.toFixed(2) + "%";
   const pnlRatio = s.lossPct / s.lossLimit;
   $("pnl-fill").style.width = pct(s.lossPct, s.lossLimit) + "%";
   level($("pnl-fill"), pnlRatio);
 
   $("orders").textContent = s.ordersLastHour + " / " + s.ordersLimit;
-  $("ord-limit").textContent = "tối đa " + s.ordersLimit + " lệnh mỗi giờ";
+  $("ord-limit").textContent = "max " + s.ordersLimit + " per hour";
   $("ord-fill").style.width = pct(s.ordersLastHour, s.ordersLimit) + "%";
   level($("ord-fill"), s.ordersLastHour / s.ordersLimit);
 
   $("cooldown").textContent = s.cooldownLeft + "s";
-  $("cd-limit").textContent = "giãn cách " + s.cooldownLimit + "s";
+  $("cd-limit").textContent = s.cooldownLimit + "s spacing";
   $("cd-fill").style.width = pct(s.cooldownLeft, s.cooldownLimit) + "%";
   level($("cd-fill"), s.cooldownLeft > 0 ? 0.7 : 0);
 
   $("chips").innerHTML = [
-    "<span class='chip'>TRẦN MỖI LỆNH <b>" + s.maxNotional + " USDT</b></span>",
-    "<span class='chip'>CHUỖI LỖ <b>" + s.lossStreak + "</b></span>",
-    "<span class='chip'>NGÀY UTC <b>" + s.day + "</b></span>",
-    "<span class='chip'>SYMBOL <b>" + s.symbols.join(" · ") + "</b></span>",
+    "<span class='chip'>PER-ORDER CAP <b>" + s.maxNotional + " USDT</b></span>",
+    "<span class='chip'>LOSING STREAK <b>" + s.lossStreak + "</b></span>",
+    "<span class='chip'>UTC DAY <b>" + s.day + "</b></span>",
+    "<span class='chip'>SYMBOLS <b>" + s.symbols.join(" · ") + "</b></span>",
   ].join("");
 
   $("feed-stat").innerHTML =
-    s.report.total + " quyết định · <b>" + s.report.denied + " bị chặn</b> · " +
-    s.report.notionalBlocked.toFixed(2) + " USDT không ra tới sàn";
+    s.report.total + " judged · <b>" + s.report.denied + " refused</b> · " +
+    s.report.notionalBlocked.toFixed(2) + " USDT never reached the exchange";
 
   // Rewriting this list every tick would restart the entry animation once a
   // second — a permanent flicker. Only redraw when the trail actually moved.
@@ -289,14 +289,14 @@ function render(s) {
   lastFeedKey = key;
 
   $("rows").innerHTML = s.feed.length === 0
-    ? '<div class="empty">CHƯA CÓ LỆNH NÀO ĐI QUA</div>'
+    ? '<div class="empty">NOTHING HAS CROSSED YET</div>'
     : s.feed.map((e) => {
         const denied = e.verdict === "DENY";
         const what = [e.side, e.notional != null ? e.notional + " USDT" : null, e.symbol]
           .filter(Boolean).join(" ");
         const body = denied
           ? (e.detail || "")
-          : (e.agent_reason ? '"' + e.agent_reason + '"' : "Cho qua.");
+          : (e.agent_reason ? '"' + e.agent_reason + '"' : "Allowed.");
         return (
           '<div class="row ' + (denied ? "deny" : "allow") + '">' +
             "<time>" + timeOf(e.ts) + "</time>" +
@@ -323,7 +323,7 @@ async function tick() {
     const r = await fetch("/api/status");
     render(await r.json());
   } catch {
-    $("note").textContent = "Mất kết nối tới dashboard server.";
+    $("note").textContent = "Lost connection to the dashboard server.";
   }
   $("clock").textContent = new Date().toTimeString().slice(0, 8);
 }

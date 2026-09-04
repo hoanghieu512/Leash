@@ -57,7 +57,7 @@ export function checkOrder(
 ): CheckOrderResult {
   if (args.reason.trim().length === 0) {
     return {
-      text: "Cần nêu lý do thật sự. Một chuỗi rỗng không phải lý do, và Leash sẽ chặn lệnh đi kèm nó.",
+      text: "A real reason is required. An empty string is not one, and Leash will refuse the order it accompanies.",
       state,
     };
   }
@@ -80,17 +80,17 @@ export function checkOrder(
   if (isDenied(verdict) && verdict.rule !== "require_reason") {
     return {
       text:
-        `Lệnh này SẼ BỊ CHẶN nếu đặt bây giờ.\n\n` +
-        `Luật: ${verdict.rule}\n${verdict.detail}\n\n` +
-        `Khai báo đã ghi nhận — sửa lệnh cho hợp luật rồi khai lại.`,
+        `This order WOULD BE REFUSED if placed now.\n\n` +
+        `Rule: ${verdict.rule}\n${verdict.detail}\n\n` +
+        `The declaration was recorded — adjust the order to fit the rules and declare again.`,
       state: next,
     };
   }
 
   return {
     text:
-      `Đã ghi nhận: ${args.side} ${args.notional} USDT ${ticket.symbol} — "${ticket.reason}".\n` +
-      `Lệnh này sẽ đi qua được. Đặt trong vòng 2 phút; mỗi khai báo dùng đúng một lần.`,
+      `Recorded: ${args.side} ${args.notional} USDT ${ticket.symbol} — "${ticket.reason}".\n` +
+      `This order will pass. Place it within 2 minutes; each declaration covers exactly one order.`,
     state: next,
   };
 }
@@ -116,18 +116,18 @@ export function budgetStatus(state: LeashState, policy: Policy, ctx: RuleContext
   const lossPct = (-pnl / state.dayStartEquity) * 100;
 
   const lines = [
-    `Ngày UTC             ${state.dayStartUtc}`,
-    `Vốn đầu ngày         ${state.dayStartEquity.toFixed(2)} USDT`,
-    `Lãi/lỗ hôm nay       ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} USDT` +
-      (marksMissing ? "  (thiếu giá tham chiếu, chưa tính hết phần chưa thực hiện)" : ""),
-    `Ngưỡng khoá          ${policy.behavior.dailyLossKillSwitchPct}%  ` +
-      `(hiện ${lossPct > 0 ? lossPct.toFixed(2) : "0.00"}%)`,
-    `Hạn mức mỗi lệnh     ${policy.limits.maxNotionalPerOrder} USDT`,
-    `Lệnh trong giờ này   ${ordersLastHour}/${policy.limits.maxOrdersPerHour}`,
-    `Chờ thêm             ${cooldownLeft} giây trước lệnh kế tiếp`,
-    `Chuỗi lỗ liên tiếp   ${state.lossStreak}`,
-    `Kill switch          ${state.killSwitch.manual ? "ĐANG BẬT — chỉ đóng vị thế được" : "tắt"}`,
-    `Symbol cho phép      ${policy.limits.symbolAllowlist.join(", ")}`,
+    `UTC day              ${state.dayStartUtc}`,
+    `Opening equity       ${state.dayStartEquity.toFixed(2)} USDT`,
+    `P&L today            ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} USDT` +
+      (marksMissing ? "  (unrealised P&L could not be priced)" : ""),
+    `Lock threshold       ${policy.behavior.dailyLossKillSwitchPct}%  ` +
+      `(now ${lossPct > 0 ? lossPct.toFixed(2) : "0.00"}%)`,
+    `Per-order limit      ${policy.limits.maxNotionalPerOrder} USDT`,
+    `Orders this hour     ${ordersLastHour}/${policy.limits.maxOrdersPerHour}`,
+    `Cooldown remaining   ${cooldownLeft}s before the next order`,
+    `Losing streak        ${state.lossStreak}`,
+    `Kill switch          ${state.killSwitch.manual ? "ON — closing orders only" : "off"}`,
+    `Allowed symbols      ${policy.limits.symbolAllowlist.join(", ")}`,
   ];
   return lines.join("\n");
 }
@@ -137,13 +137,13 @@ export function whyBlocked(auditPath: string): string {
   const { entries } = readAudit(auditPath);
   const lastDeny = [...entries].reverse().find((e) => e.verdict === "DENY");
 
-  if (lastDeny === undefined) return "Chưa có lệnh nào bị chặn.";
+  if (lastDeny === undefined) return "No order has been refused yet.";
 
   return [
-    `Lần chặn gần nhất: ${lastDeny.ts}`,
+    `Most recent refusal: ${lastDeny.ts}`,
     `Tool    ${lastDeny.tool}`,
-    `Lệnh    ${lastDeny.side ?? "-"} ${lastDeny.notional ?? "-"} ${lastDeny.symbol ?? ""}`.trim(),
-    `Luật    ${lastDeny.rule}`,
+    `Order   ${lastDeny.side ?? "-"} ${lastDeny.notional ?? "-"} ${lastDeny.symbol ?? ""}`.trim(),
+    `Rule    ${lastDeny.rule}`,
     "",
     lastDeny.detail ?? "",
   ].join("\n");
@@ -154,12 +154,12 @@ export function setKillSwitch(state: LeashState, on: boolean, now: number): { te
     return {
       // Turning it on is instant and needs no confirmation: hesitating in front
       // of a stop button defeats the button.
-      text: "Kill switch ĐÃ BẬT. Mọi lệnh mở mới bị chặn; lệnh đóng vị thế vẫn đi qua được.",
+      text: "Kill switch is ON. No new or larger position may be opened; closing orders still go through.",
       state: { ...state, killSwitch: { ...state.killSwitch, manual: true, trippedAt: now } },
     };
   }
   return {
-    text: "Kill switch đã tắt. Lệnh mở mới được phép trở lại, các luật khác vẫn nguyên.",
+    text: "Kill switch is off. Opening is allowed again; every other rule still applies.",
     state: { ...state, killSwitch: { manual: false } },
   };
 }

@@ -63,7 +63,7 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
   // invoked us and we cannot tell what it was about to do.
   if (typeof input.tool_name !== "string" || input.tool_name.length === 0) {
     return denyOutput(
-      "[Leash] Hook nhận payload không có tên tool nên không xác định được lệnh gì sắp chạy — chặn vì không chắc chắn.",
+      "[Leash] The hook received a payload with no tool name, so it cannot tell what was about to run. Refused.",
     );
   }
 
@@ -91,7 +91,7 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
     const decision = clock() >= deadline
       ? deny(
           "time_budget",
-          "Leash hết thời gian đánh giá lệnh này nên chặn để an toàn. Thử lại sau vài giây.",
+          "Leash ran out of time evaluating this order and refused it to be safe. Try again in a few seconds.",
           [],
         )
       : evaluate(intent, state, policy, ctx);
@@ -115,7 +115,7 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
     // No intent was parsed, so this failure would otherwise leave no trace at
     // all — and a tampered state file is exactly the event worth recording.
     appendAudit(deps.auditPath, buildSystemEntry("leash_unavailable", detail, deps.now));
-    return denyOutput(`[Leash] Không đánh giá được lệnh: ${detail}`);
+    return denyOutput(`[Leash] Could not evaluate this order: ${detail}`);
   }
 }
 

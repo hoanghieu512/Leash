@@ -20,11 +20,11 @@ const S = emptyState("2026-09-05", 100);
 
 describe("entries", () => {
   it("records a denial with the rule and the explanation", () => {
-    const e = buildEntry(intent({ notionalUsdt: 180 }), S, deny("max_notional_per_order", "quá lớn", []), null, T0);
+    const e = buildEntry(intent({ notionalUsdt: 180 }), S, deny("max_notional_per_order", "too large", []), null, T0);
 
     expect(e.verdict).toBe("DENY");
     expect(e.rule).toBe("max_notional_per_order");
-    expect(e.detail).toBe("quá lớn");
+    expect(e.detail).toBe("too large");
     expect(e.notional).toBe(180);
   });
 
@@ -47,7 +47,7 @@ describe("entries", () => {
 describe("appending", () => {
   it("keeps every line and never rewrites an old one", () => {
     appendAudit(path, buildEntry(intent(), S, allow([]), null, T0));
-    appendAudit(path, buildEntry(intent(), S, deny("rate_limit", "quá nhanh", []), null, T0 + 1));
+    appendAudit(path, buildEntry(intent(), S, deny("rate_limit", "too fast", []), null, T0 + 1));
 
     expect(readAudit(path).entries).toHaveLength(2);
   });
@@ -80,7 +80,7 @@ describe("report", () => {
 
   it("survives an empty log", () => {
     expect(summarise([]).total).toBe(0);
-    expect(formatReport(summarise([]))).toContain("Chưa có");
+    expect(formatReport(summarise([]))).toContain("No decisions recorded");
   });
 
   it("skips a corrupt line and still totals the rest", () => {
@@ -94,13 +94,13 @@ describe("report", () => {
 
     expect(r.total).toBe(2);
     expect(r.malformedLines).toBe(1);
-    expect(formatReport(r)).toContain("1 dòng hỏng");
+    expect(formatReport(r)).toContain("1 malformed line(s) skipped");
   });
 
   it("prints something a person can read out loud", () => {
     const text = formatReport(summarise(entries()));
 
-    expect(text).toContain("Tổng lệnh đi qua Leash");
+    expect(text).toContain("Calls judged");
     expect(text).toContain("290.00 USDT");
     expect(text).toContain("max_notional_per_order");
   });

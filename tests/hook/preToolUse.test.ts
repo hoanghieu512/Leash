@@ -97,7 +97,7 @@ describe("denials", () => {
     const out = await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 5 }), deps);
 
     expect(out.hookSpecificOutput?.permissionDecision).toBe("deny");
-    expect(out.hookSpecificOutput?.permissionDecisionReason).toMatch(/leash\.policy\.yaml|luật/i);
+    expect(out.hookSpecificOutput?.permissionDecisionReason).toMatch(/leash\.policy\.yaml|rule file/i);
   });
 
   it("blocks when the state file is corrupt", async () => {
@@ -124,7 +124,7 @@ describe("denials", () => {
     };
     const out = await decide(order({ symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }), slow);
 
-    expect(out.hookSpecificOutput?.permissionDecisionReason).toMatch(/thời gian|hết giờ/i);
+    expect(out.hookSpecificOutput?.permissionDecisionReason).toMatch(/ran out of time/i);
   });
 });
 
@@ -251,6 +251,6 @@ describe("tampering", () => {
 
     expect(out.hookSpecificOutput?.permissionDecision).toBe("deny");
     expect(readAudit(deps.auditPath).entries[0]?.rule).toBe("leash_unavailable");
-    expect(readAudit(deps.auditPath).entries[0]?.detail).toMatch(/chữ ký|sửa/i);
+    expect(readAudit(deps.auditPath).entries[0]?.detail).toMatch(/signature|modified outside/i);
   });
 });

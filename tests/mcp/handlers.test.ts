@@ -16,7 +16,7 @@ describe("check_order", () => {
   it("records the declaration and says the order will pass", () => {
     const r = checkOrder(args, S, policy(), ctx);
 
-    expect(r.text).toContain("sẽ đi qua được");
+    expect(r.text).toContain("will pass");
     expect(r.state.tickets[0]?.reason).toBe("breakout");
   });
 
@@ -30,7 +30,7 @@ describe("check_order", () => {
   it("warns in advance when the order would be refused, naming the rule", () => {
     const r = checkOrder({ ...args, notional: 200 }, S, policy(), ctx);
 
-    expect(r.text).toContain("SẼ BỊ CHẶN");
+    expect(r.text).toContain("WOULD BE REFUSED");
     expect(r.text).toContain("max_notional_per_order");
   });
 
@@ -42,7 +42,7 @@ describe("check_order", () => {
   it("refuses an empty reason without recording anything", () => {
     const r = checkOrder({ ...args, reason: "   " }, S, policy(), ctx);
 
-    expect(r.text).toContain("lý do");
+    expect(r.text).toContain("A real reason is required");
     expect(r.state.tickets).toHaveLength(0);
   });
 
@@ -69,18 +69,18 @@ describe("budget_status", () => {
 
     expect(text).toContain("-2.50 USDT");
     expect(text).toContain("1/6");
-    expect(text).toContain("30 giây");
+    expect(text).toContain("30s before the next order");
     expect(text).toContain("BTCUSDT, ETHUSDT");
   });
 
   it("says plainly when the kill switch is on", () => {
     const s: LeashState = { ...S, killSwitch: { manual: true } };
-    expect(budgetStatus(s, policy(), ctx)).toContain("ĐANG BẬT");
+    expect(budgetStatus(s, policy(), ctx)).toContain("ON — closing orders only");
   });
 
   it("admits when unrealised P&L could not be priced", () => {
     const s: LeashState = { ...S, positions: { BTCUSDT: { symbol: "BTCUSDT", quantity: 1, avgCost: 100 } } };
-    expect(budgetStatus(s, policy(), { now: T0 })).toContain("thiếu giá tham chiếu");
+    expect(budgetStatus(s, policy(), { now: T0 })).toContain("could not be priced");
   });
 });
 
@@ -88,17 +88,17 @@ describe("why_blocked", () => {
   it("repeats the rule's own words from the last refusal", () => {
     const dir = mkdtempSync(join(tmpdir(), "leash-why-"));
     const path = join(dir, "audit.jsonl");
-    const e = buildEntry(intent({ notionalUsdt: 180 }), S, deny("max_notional_per_order", "180 vượt 15", []), null, T0);
+    const e = buildEntry(intent({ notionalUsdt: 180 }), S, deny("max_notional_per_order", "180 exceeds 15", []), null, T0);
     writeFileSync(path, `${JSON.stringify(e)}\n`, "utf8");
 
     const text = whyBlocked(path);
     expect(text).toContain("max_notional_per_order");
-    expect(text).toContain("180 vượt 15");
+    expect(text).toContain("180 exceeds 15");
     rmSync(dir, { recursive: true, force: true });
   });
 
   it("says so when nothing has been blocked", () => {
-    expect(whyBlocked(join(tmpdir(), "definitely-absent.jsonl"))).toContain("Chưa có");
+    expect(whyBlocked(join(tmpdir(), "definitely-absent.jsonl"))).toContain("No order has been refused");
   });
 });
 
@@ -107,7 +107,7 @@ describe("kill_switch", () => {
     const r = setKillSwitch(S, true, T0);
 
     expect(r.state.killSwitch.manual).toBe(true);
-    expect(r.text).toContain("ĐÃ BẬT");
+    expect(r.text).toContain("Kill switch is ON");
   });
 
   it("turns off and leaves the other rules alone", () => {
@@ -115,7 +115,7 @@ describe("kill_switch", () => {
     const off = setKillSwitch(on, false, T0);
 
     expect(off.state.killSwitch.manual).toBe(false);
-    expect(off.text).toContain("các luật khác vẫn nguyên");
+    expect(off.text).toContain("every other rule still applies");
   });
 
   it("once on, the real gate blocks opening but not closing", () => {

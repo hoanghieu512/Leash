@@ -43,7 +43,7 @@ describe("daily_loss_kill_switch", () => {
     };
     const v = dailyLoss.check(intent(), s, policy(), ctx);
 
-    expect(v?.detail).toMatch(/chưa thực hiện|mark|realized/i);
+    expect(v?.detail).toMatch(/unrealised|priced/i);
   });
 
   it("ignores a profitable day", () => {

@@ -16,7 +16,7 @@ export function parsePolicy(yamlText: string): Policy {
   try {
     doc = parseYaml(yamlText);
   } catch (err) {
-    throw new PolicyError(`leash.policy.yaml không phải YAML hợp lệ: ${(err as Error).message}`);
+    throw new PolicyError(`leash.policy.yaml is not valid YAML: ${(err as Error).message}`);
   }
 
   const result = policySchema.safeParse(doc);
@@ -25,7 +25,7 @@ export function parsePolicy(yamlText: string): Policy {
       const path = i.path.join(".");
       return path ? `  ${path}: ${i.message}` : `  ${i.message}`;
     });
-    throw new PolicyError(`leash.policy.yaml không hợp lệ:\n${lines.join("\n")}`);
+    throw new PolicyError(`leash.policy.yaml is invalid:\n${lines.join("\n")}`);
   }
 
   return toPolicy(result.data);
@@ -38,7 +38,7 @@ export function loadPolicy(path: string): Policy {
     text = readFileSync(path, "utf8");
   } catch {
     throw new PolicyError(
-      `Không đọc được ${path}. Leash chặn mọi lệnh khi thiếu file luật — chạy 'leash init' để tạo file mẫu.`,
+      `Cannot read ${path}. Leash refuses every order while the rule file is missing.`,
     );
   }
   return parsePolicy(text);

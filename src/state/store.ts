@@ -33,7 +33,7 @@ export function loadState(
   try {
     const parsed = JSON.parse(text) as LeashState & { sig?: string };
     if (typeof parsed.dayStartUtc !== "string" || typeof parsed.realizedPnlToday !== "number") {
-      throw new Error("thiếu trường bắt buộc");
+      throw new Error("required fields are missing");
     }
 
     // The losing streak, the daily P&L and the kill switch all live in this file.
@@ -41,15 +41,15 @@ export function loadState(
     // so an unsigned or mis-signed file is treated as tampering.
     if (!verify(parsed, loadOrCreateSecret(secretPath))) {
       throw new StateError(
-        `${path} đã bị sửa ngoài Leash — chữ ký không khớp. Mọi lệnh bị chặn. ` +
-          `Nếu chấp nhận mất lãi/lỗ trong ngày và chuỗi lỗ, xoá ${path} rồi chạy lại.`,
+        `${path} was modified outside Leash — the signature does not match. Every order is refused. ` +
+          `To start over, accepting the loss of today's P&L and the losing streak, delete ${path}.`,
       );
     }
     return parsed;
   } catch (err) {
     if (err instanceof StateError) throw err;
     throw new StateError(
-      `${path} không đọc được (${(err as Error).message}). Leash chặn mọi lệnh cho tới khi sửa xong.`,
+      `${path} is unreadable (${(err as Error).message}). Leash refuses every order until it is fixed.`,
     );
   }
 }

@@ -12,15 +12,15 @@ export const maxNotional: Rule = {
       return {
         rule: this.name,
         detail:
-          `Không xác định được giá trị lệnh nên không thể đối chiếu hạn mức ${num(limit)} USDT. ` +
-          `Hãy nêu rõ quoteOrderQty (số USDT) hoặc cả quantity lẫn price.`,
+          `Order size could not be determined, so it cannot be checked against the ` +
+          `${num(limit)} USDT per-order limit. State quoteOrderQty, or both quantity and price.`,
       };
     }
 
     if (intent.notionalUsdt > limit) {
       return {
         rule: this.name,
-        detail: `${num(intent.notionalUsdt)} USDT vượt hạn mức ${num(limit)} USDT mỗi lệnh.`,
+        detail: `${num(intent.notionalUsdt)} USDT exceeds the ${num(limit)} USDT per-order limit.`,
       };
     }
     return null;

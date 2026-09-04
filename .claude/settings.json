@@ -8,7 +8,7 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/bin/leash-hook.mjs\"",
             "timeout": 5,
-            "statusMessage": "Leash đang kiểm tra lệnh"
+            "statusMessage": "Leash is checking this order"
           }
         ]
       }

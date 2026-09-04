@@ -27,9 +27,9 @@ export const revengeCooldown: Rule = {
     return {
       rule: this.name,
       detail:
-        `Vừa đóng lỗ ${symbol} cách đây ${Math.floor(elapsed / 60_000)} phút. ` +
-        `Chờ thêm ${num(waitMinutes)} phút nữa mới được vào lại chính symbol này. ` +
-        `Symbol khác không bị ảnh hưởng.`,
+        `${symbol} was closed at a loss ${Math.floor(elapsed / 60_000)} minutes ago. ` +
+        `Wait another ${num(waitMinutes)} minutes before re-entering this symbol. ` +
+        `Other symbols are unaffected.`,
     };
   },
 };

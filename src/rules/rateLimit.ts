@@ -18,8 +18,8 @@ export const rateLimit: Rule = {
       return {
         rule: this.name,
         detail:
-          `Lệnh trước cách đây ${Math.round(gapSeconds)} giây, ` +
-          `phải chờ đủ ${num(minGap)} giây giữa hai lệnh.`,
+          `The previous order was ${Math.round(gapSeconds)}s ago; orders must be at least ` +
+          `${num(minGap)}s apart.`,
       };
     }
 
@@ -28,7 +28,7 @@ export const rateLimit: Rule = {
     if (inLastHour >= max) {
       return {
         rule: this.name,
-        detail: `Đã đặt ${inLastHour} lệnh trong một giờ, hạn mức là ${num(max)}.`,
+        detail: `${inLastHour} orders placed in the last hour; the limit is ${num(max)}.`,
       };
     }
     return null;
