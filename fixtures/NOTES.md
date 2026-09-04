@@ -5,9 +5,9 @@
 
 ## 1. Hook có chặn được tool MCP không? (KILL GATE)
 
-- [ ] Hook có được gọi khi agent gọi tool Binance MCP không? → **CHƯA KIỂM**
-- [ ] Matcher `mcp__.*` có bắt được không? → **CHƯA KIỂM**
-- [ ] Matcher hẹp `mcp__binance-mcp-server__.*` có bắt được không? → **CHƯA KIỂM**
+- [x] Hook có được gọi khi agent gọi tool Binance MCP không? → **CÓ** (04/09, 3 payload thật)
+- [x] Matcher `mcp__.*` có bắt được không? → **CÓ**
+- [ ] Matcher hẹp `mcp__binance-mcp-server__.*` có bắt được không? → chưa thử, không cần thiết vì matcher rộng đã chạy
 - [ ] Output `hookSpecificOutput.permissionDecision = "deny"` có thực sự chặn không? → **CHƯA KIỂM**
 - [ ] Câu `permissionDecisionReason` có hiện ra cho agent đọc không? → **CHƯA KIỂM**
 
@@ -22,8 +22,9 @@ Nếu ô thứ tư trả lời KHÔNG → kill gate, chuyển sang proxy (design
 | Lệnh futures USDⓈ-M | |
 | Lệnh margin | |
 | Convert | |
-| Xem số dư | |
-| Ticker / giá | |
+| Xem số dư (ví tổng) | `mcp__binance-mcp-server__wallet_queryUserWalletBalance` |
+| Xem tài khoản spot | `mcp__binance-mcp-server__spot_getAccount` — tool_input: `{omitZeroBalances: bool}` |
+| Ticker / giá 24h | `mcp__binance-mcp-server__spot_ticker24hr` |
 | Kline | |
 
 ## 3. Hình dạng `tool_input` của lệnh spot
@@ -50,8 +51,20 @@ Tên trường thật (điền theo payload quan sát được):
 - Min notional thực tế của BTCUSDT: 
 - Phân biệt lỗi sàn với lệnh bị Leash chặn bằng cách nào: 
 
+## 5b. Bề mặt tool — CẦN LẤY ĐỦ
+
+Quy ước tên quan sát được: `mcp__binance-mcp-server__<nhóm>_<hànhĐộng>`, nhóm đã thấy: `spot_`, `wallet_`.
+
+- [ ] Danh sách **đầy đủ** mọi tool của server (hỏi agent liệt kê)
+- [ ] Nhóm nào ứng với futures / margin (cần cho luật `spot_only`)
+- [ ] **Có tool rút tiền nào không?** Docs nói không có withdrawal scope — phải xác minh bằng danh sách thật. Nếu có, đó là rủi ro lớn nhất của cả dự án và Leash phải chặn tuyệt đối.
+
+Ghi chú: tài khoản báo `canWithdraw ✅`, nhưng đó là quyền của **tài khoản**, không phải scope của **agent**. Hai chuyện khác nhau — danh sách tool mới là câu trả lời.
+
 ## 6. Ghi chú khác
 
-- Agentic sub-account đã nạp: ___ USDT
-- Track B đã hoàn thành: chưa
+- Agentic sub-account: UID **1273687478** (`agentic_1_virtual@gd16xw63noemail.com`), đã nạp **10 USDT** (04/09), toàn bộ ở ví Spot
+- Phí maker/taker: 0.1%
+- Payload hook có các khoá: `session_id, transcript_path, cwd, scratchpad_dir, prompt_id, permission_mode, effort, hook_event_name, tool_name, tool_input, tool_use_id`
+- Track B: không tham gia (survey chỉ cho chọn một track, đã chọn Track A)
 - Thời gian OAuth hết hạn (nếu quan sát được): 
