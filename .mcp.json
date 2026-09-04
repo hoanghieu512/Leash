@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "leash": {
+      "command": "node",
+      "args": ["bin/leash-mcp.mjs"]
+    }
+  }
+}
