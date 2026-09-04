@@ -1,4 +1,4 @@
-import type { Fill, LeashState, Position, RecentOrder } from "../domain/types.js";
+import type { CheckTicket, Fill, LeashState, OrderIntent, Position, RecentOrder } from "../domain/types.js";
 
 /** How long a fill stays interesting for rate limiting. */
 const ORDER_HISTORY_MS = 2 * 60 * 60 * 1000;
@@ -104,5 +104,53 @@ export function rollDayIfNeeded(state: LeashState, now: number, equityNow: numbe
     dayStartEquity: equityNow,
     realizedPnlToday: 0,
     killSwitch: { manual: state.killSwitch.manual },
+  };
+}
+
+/**
+ * How long a declared intent stays valid. Long enough for the agent to think
+ * between declaring and placing, short enough that it cannot declare a batch of
+ * intentions in the morning and trade off them all afternoon.
+ */
+export const TICKET_TTL_MS = 120_000;
+
+/** Agents round differently when they declare than when they place. */
+const NOTIONAL_TOLERANCE = 0.05;
+
+function ticketMatches(t: CheckTicket, intent: OrderIntent, now: number): boolean {
+  if (t.consumed) return false;
+  if (now - t.ts > TICKET_TTL_MS) return false;
+  if (intent.symbol === null || t.symbol.toUpperCase() !== intent.symbol.toUpperCase()) return false;
+  if (t.side !== intent.side) return false;
+  if (t.reason.trim().length === 0) return false;
+  if (intent.notionalUsdt === null) return false;
+
+  const drift = Math.abs(intent.notionalUsdt - t.notionalUsdt) / Math.max(t.notionalUsdt, 1e-9);
+  return drift <= NOTIONAL_TOLERANCE;
+}
+
+/** The declaration that authorises this order, if the agent made one. */
+export function findMatchingTicket(
+  state: LeashState,
+  intent: OrderIntent,
+  now: number,
+): CheckTicket | undefined {
+  return state.tickets.find((t) => ticketMatches(t, intent, now));
+}
+
+/** Record an intent declared through leash.check_order, dropping expired ones. */
+export function addTicket(state: LeashState, ticket: CheckTicket, now: number): LeashState {
+  const live = state.tickets.filter((t) => now - t.ts <= TICKET_TTL_MS && !t.consumed);
+  return { ...state, tickets: [ticket, ...live].slice(0, 20) };
+}
+
+/** Burn the declaration this order used, so it cannot authorise a second one. */
+export function consumeTicket(state: LeashState, intent: OrderIntent, now: number): LeashState {
+  const match = findMatchingTicket(state, intent, now);
+  if (match === undefined) return state;
+
+  return {
+    ...state,
+    tickets: state.tickets.map((t) => (t === match ? { ...t, consumed: true } : t)),
   };
 }
