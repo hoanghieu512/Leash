@@ -8,10 +8,12 @@
 - [x] Hook có được gọi khi agent gọi tool Binance MCP không? → **CÓ** (04/09, 3 payload thật)
 - [x] Matcher `mcp__.*` có bắt được không? → **CÓ**
 - [ ] Matcher hẹp `mcp__binance-mcp-server__.*` có bắt được không? → chưa thử, không cần thiết vì matcher rộng đã chạy
-- [ ] Output `hookSpecificOutput.permissionDecision = "deny"` có thực sự chặn không? → **CHƯA KIỂM**
-- [ ] Câu `permissionDecisionReason` có hiện ra cho agent đọc không? → **CHƯA KIỂM**
+- [x] Output `hookSpecificOutput.permissionDecision = "deny"` có thực sự chặn không? → **CÓ** (04/09, chặn `spot_ticker24hr`)
+- [x] Câu `permissionDecisionReason` có hiện ra cho agent đọc không? → **CÓ**, agent đọc và diễn giải lại đúng
 
-Nếu ô thứ tư trả lời KHÔNG → kill gate, chuyển sang proxy (design doc §7).
+✅ **KILL GATE QUA.** Kiến trúc hook đứng vững, không phải chuyển sang proxy.
+
+**Quan sát bổ sung, quan trọng hơn cả việc chặn thành công:** khi bị chặn, agent tự nhận ra nó có đường vòng — *"không đi đường vòng, ví dụ chuyển sang `spot_tickerPrice` hay `spot_klines`"* — và tự nguyện không đi. Đó là agent **hợp tác**, không phải agent **bị chặn**. Hệ quả bắt buộc cho thiết kế: Leash phải là **allowlist** (mọi tool ghi bị chặn trừ danh sách trắng đích danh), không bao giờ là blocklist.
 
 ## 2. Tên tool thật
 
