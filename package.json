@@ -15,7 +15,8 @@
     "setup": "npm install && npm run build",
     "report": "tsx src/audit/reportCli.ts",
     "dash": "tsx src/dash/server.ts",
-    "proxy": "tsx src/proxy/server.ts"
+    "proxy": "tsx src/proxy/server.ts",
+    "seed:demo": "tsx scripts/seedLosingStreak.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
