@@ -36,6 +36,17 @@ export interface HookDeps {
 
 const ALLOW: HookOutput = {};
 
+/**
+ * Rules whose verdict a price can change: a mark can reveal an unrealised loss,
+ * or turn an unknown order size into a known one. Every other rule reaches the
+ * same answer with or without the network.
+ */
+const PRICE_SENSITIVE = new Set([
+  "daily_loss_kill_switch",
+  "max_notional_per_order",
+  "no_size_up_after_losses",
+]);
+
 function denyOutput(reason: string): HookOutput {
   return {
     hookSpecificOutput: {
@@ -76,9 +87,22 @@ export async function decide(input: HookInput, deps: HookDeps): Promise<HookOutp
     const intentNoMarks = toIntent(input as HookPayload, state, { now: deps.now });
     if (intentNoMarks === null) return ALLOW; // a read, or another server's tool
 
-    // Prices cost a network round trip, so only pay for them when they change an
-    // answer: to mark open positions to market, or to size an order that states
-    // neither a quote amount nor a price. Most orders need neither.
+    // Ask the rules once with no prices at all. Most refusals — wrong market,
+    // wrong symbol, a hard rule, the kill switch — do not depend on what
+    // anything costs, and answering them here means never paying for a network
+    // round trip to reach a conclusion already reached.
+    //
+    // This is not only about speed. A leverage change carries no notional, so
+    // the old code went looking for a mark price it could not use, and a slow
+    // network turned "futures are not allowed" into "Leash ran out of time" —
+    // a true statement that tells the reader nothing.
+    const dry = evaluate(intentNoMarks, state, policy, { now: deps.now });
+    if (isDenied(dry) && !PRICE_SENSITIVE.has(dry.rule)) {
+      const reason = findMatchingTicket(state, intentNoMarks, deps.now)?.reason ?? null;
+      appendAudit(deps.auditPath, buildEntry(intentNoMarks, state, dry, reason, deps.now));
+      return denyOutput(`[Leash · ${dry.rule}] ${dry.detail}`);
+    }
+
     const marks = needsPrices(state, intentNoMarks)
       ? await withDeadline(deps.fetchMarks(symbolsToPrice(state, intentNoMarks)), deadline - clock(), {})
       : {};

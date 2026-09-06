@@ -254,3 +254,45 @@ describe("tampering", () => {
     expect(readAudit(deps.auditPath).entries[0]?.detail).toMatch(/signature|modified outside/i);
   });
 });
+
+describe("only pay for prices when they can change the answer", () => {
+  it("refuses a futures order by its own rule, without asking for a price first", async () => {
+    // A leverage change carries no notional, so the old code went looking for a
+    // mark price — and a slow network turned spot_only into a timeout, replacing
+    // the real reason with a generic one.
+    let asked = false;
+    const watched: HookDeps = { ...deps, fetchMarks: async () => { asked = true; return {}; } };
+
+    const out = await decide(
+      {
+        tool_name: "mcp__binance-mcp-server__futures_usds_changeInitialLeverage",
+        tool_input: { symbol: "BTCUSDT", leverage: 10 },
+      },
+      watched,
+    );
+
+    expect(out.hookSpecificOutput?.permissionDecisionReason).toContain("spot_only");
+    expect(asked, "no price lookup should have happened").toBe(false);
+  });
+
+  it("still asks for a price when the size genuinely depends on one", async () => {
+    declare(12);
+    let asked = false;
+    const watched: HookDeps = {
+      ...deps,
+      fetchMarks: async () => { asked = true; return { BTCUSDT: 81000 }; },
+    };
+    // quantity with no price: only a mark can say what this is worth.
+    await decide(order({ symbol: "BTCUSDT", side: "BUY", quantity: 0.0001 }), watched);
+
+    expect(asked).toBe(true);
+  });
+
+  it("refuses a disallowed symbol without a price lookup", async () => {
+    let asked = false;
+    const watched: HookDeps = { ...deps, fetchMarks: async () => { asked = true; return {}; } };
+    await decide(order({ symbol: "PEPEUSDT", side: "BUY", quoteOrderQty: 9 }), watched);
+
+    expect(asked).toBe(false);
+  });
+});
