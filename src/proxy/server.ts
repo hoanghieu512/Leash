@@ -22,7 +22,13 @@ const ROOT = process.env["LEASH_HOME"] ?? process.cwd();
 
 const PUBLIC_URL = process.env["LEASH_PROXY_URL"] ?? `http://127.0.0.1:${PORT}/`;
 
-const handle = createHandler({ upstream: UPSTREAM, publicUrl: PUBLIC_URL, root: ROOT, fetchMarks });
+const handle = createHandler({
+  upstream: UPSTREAM,
+  publicUrl: PUBLIC_URL,
+  root: ROOT,
+  fetchMarks,
+  log: (line) => process.stdout.write(`${new Date().toTimeString().slice(0, 8)}  ${line}\n`),
+});
 
 const server = createServer((req, res) => {
   handle(req, res).catch((err: unknown) => {

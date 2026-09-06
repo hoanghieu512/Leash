@@ -10,6 +10,8 @@ export interface ProxyConfig {
   fetchMarks: (symbols: string[]) => Promise<Record<string, number>>;
   /** Injectable for tests; defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /** One line per decision. Silent in tests, visible on screen when running. */
+  log?: (line: string) => void;
 }
 
 /** Headers worth carrying upstream. Everything else is hop-by-hop noise. */
@@ -60,6 +62,7 @@ export function rpcError(id: unknown, message: string): string {
 
 export function createHandler(config: ProxyConfig) {
   const doFetch = config.fetchImpl ?? fetch;
+  const log = config.log ?? (() => {});
   const upstreamOrigin = new URL(config.upstream).origin;
 
   async function judge(bodyText: string): Promise<{ refusal: string; id: unknown } | null> {
@@ -119,11 +122,13 @@ export function createHandler(config: ProxyConfig) {
     if (bodyText !== "") {
       const verdict = await judge(bodyText);
       if (verdict !== null) {
+        log(`REFUSED  ${verdict.refusal}`);
         // Refused here, so the request never leaves the machine at all.
         res.writeHead(200, { "content-type": "application/json" });
         res.end(rpcError(verdict.id, verdict.refusal));
         return;
       }
+      log(`forward  ${describe(bodyText)}`);
     }
 
     const headers: Record<string, string> = {};
@@ -177,4 +182,18 @@ export function createHandler(config: ProxyConfig) {
     }
     res.end();
   };
+}
+
+/** A short, readable label for what a request is asking to do. */
+function describe(bodyText: string): string {
+  try {
+    const call = JSON.parse(bodyText) as JsonRpcCall;
+    if (call.method !== "tools/call") return call.method ?? "?";
+    const name = call.params?.name ?? "?";
+    const args = call.params?.arguments ?? {};
+    const inner = typeof args["toolName"] === "string" ? ` → ${args["toolName"] as string}` : "";
+    return `${name}${inner}`;
+  } catch {
+    return "non-json";
+  }
 }
