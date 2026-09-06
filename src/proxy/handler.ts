@@ -4,6 +4,8 @@ import { decide, type HookInput } from "../hook/preToolUse.js";
 
 export interface ProxyConfig {
   upstream: string;
+  /** Public URL clients reach this proxy on, e.g. http://127.0.0.1:4578/ */
+  publicUrl: string;
   root: string;
   fetchMarks: (symbols: string[]) => Promise<Record<string, number>>;
   /** Injectable for tests; defaults to global fetch. */
@@ -86,7 +88,22 @@ export function createHandler(config: ProxyConfig) {
   return async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
 
-    // Point clients at the upstream's own OAuth metadata. Leash issues nothing.
+    // Protected-resource metadata has to name THIS server. Forwarding Binance's
+    // copy verbatim gets the connection cut: a client that sees a resource other
+    // than the one it dialled treats it as a redirect it did not consent to
+    // ("Protected resource ... does not match expected ..."). So Leash declares
+    // itself as the resource, and points at Binance purely as the authority that
+    // issues tokens. It still issues nothing of its own.
+    if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({
+        resource: config.publicUrl,
+        authorization_servers: [upstreamOrigin],
+      }));
+      return;
+    }
+
+    // Everything else under /.well-known/ is the upstream's to answer.
     if (url.pathname.startsWith("/.well-known/")) {
       const upstreamRes = await doFetch(`${upstreamOrigin}${url.pathname}`, {
         headers: { accept: "application/json" },
@@ -131,6 +148,13 @@ export function createHandler(config: ProxyConfig) {
     for (const name of FORWARD_RESPONSE) {
       const v = upstreamRes.headers.get(name);
       if (v !== null) outHeaders[name] = v;
+    }
+    // Rewrite the challenge for the same reason: it must send the client to the
+    // metadata this proxy serves, not to Binance's.
+    if (upstreamRes.status === 401) {
+      const base = config.publicUrl.replace(/\/+$/, "");
+      outHeaders["www-authenticate"] =
+        `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`;
     }
     res.writeHead(upstreamRes.status, outHeaders);
 

@@ -69,6 +69,7 @@ function startProxy() {
   return new Promise<void>((resolve) => {
     const handle = createHandler({
       upstream: upstreamUrl,
+      publicUrl: "http://127.0.0.1:9999/",
       root: dir,
       fetchMarks: async () => ({ BTCUSDT: 81000 }),
     });

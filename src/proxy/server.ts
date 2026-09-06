@@ -20,7 +20,9 @@ const UPSTREAM = process.env["LEASH_UPSTREAM"] ?? "https://agent.binance.com/mcp
 const PORT = Number(process.env["LEASH_PROXY_PORT"] ?? 4578);
 const ROOT = process.env["LEASH_HOME"] ?? process.cwd();
 
-const handle = createHandler({ upstream: UPSTREAM, root: ROOT, fetchMarks });
+const PUBLIC_URL = process.env["LEASH_PROXY_URL"] ?? `http://127.0.0.1:${PORT}/`;
+
+const handle = createHandler({ upstream: UPSTREAM, publicUrl: PUBLIC_URL, root: ROOT, fetchMarks });
 
 const server = createServer((req, res) => {
   handle(req, res).catch((err: unknown) => {
