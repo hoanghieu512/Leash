@@ -29,6 +29,18 @@ const server = createServer((req, res) => {
   });
 });
 
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    // A stack trace here tells the reader nothing they can act on.
+    process.stderr.write(
+      `Port ${PORT} is already in use — the Leash proxy is probably already running.\n` +
+        `  Stop it with: lsof -ti :${PORT} -sTCP:LISTEN | xargs kill\n`,
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(`Leash proxy → http://127.0.0.1:${PORT}/  (upstream ${UPSTREAM})\n`);
 });
