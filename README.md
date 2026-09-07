@@ -100,7 +100,7 @@ Claude Code ──(tool call)──► [ LEASH HOOK ] ──► Binance MCP ─�
                         audit.jsonl  +  control panel
 ```
 
-A `PreToolUse` hook intercepts every Binance MCP call before it leaves the machine. Alongside it, a small MCP server gives the agent four tools — `check_order`, `budget_status`, `why_blocked`, `kill_switch` — so it can find out where the fence is instead of walking into it.
+A `PreToolUse` hook intercepts every Binance MCP call before it leaves the machine, and a `PostToolUse` hook records what actually filled. Both halves are needed: the first can only see intent, and the four behavioural rules judge a history that only the second can write. Alongside it, a small MCP server gives the agent four tools — `check_order`, `budget_status`, `why_blocked`, `kill_switch` — so it can find out where the fence is instead of walking into it.
 
 `check_order` is not a courtesy. Binance order payloads have no field for a reason, so `require_reason` is enforced by looking for a declaration made in the last two minutes. No declaration, no order — which turns the MCP server from advisory into a gate.
 
@@ -134,7 +134,7 @@ Worth stating plainly, because a guardrail that oversells itself is worse than n
 Node 20+, TypeScript, no framework. The decision core — `policy/`, `rules/`, `state/` — is pure functions with no I/O, wrapped in four thin adapters: the hook, the MCP server, the audit log, the dashboard. No adapter holds a rule.
 
 ```
-181 tests passing
+216 tests passing
 ```
 
 Everything fails closed. Unreadable config, corrupt state, a rule that throws, a blown time budget, a payload with no tool name — each one refuses the order. A guardrail that fails open is decoration.

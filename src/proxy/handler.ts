@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import { decide, type HookInput } from "../hook/preToolUse.js";
+import { record } from "../hook/postToolUse.js";
 
 export interface ProxyConfig {
   upstream: string;
@@ -165,6 +166,34 @@ export function createHandler(config: ProxyConfig) {
 
     if (upstreamRes.body === null) {
       res.end();
+      return;
+    }
+
+    // A JSON answer is small and finite, so read it whole: it is the only place
+    // the fill is reported, and the four behavioural rules have no history to
+    // judge without it. An event stream is left alone — it may never end, and
+    // buffering one would hang the client.
+    const contentType = upstreamRes.headers.get("content-type") ?? "";
+    if (contentType.includes("json")) {
+      const text = await upstreamRes.text();
+      res.end(text);
+      try {
+        const call = JSON.parse(bodyText) as JsonRpcCall;
+        const input = asHookInput(call);
+        if (input !== null) {
+          record(
+            { ...input, tool_response: JSON.parse(text) as unknown },
+            {
+              policyPath: join(config.root, "leash.policy.yaml"),
+              statePath: join(config.root, "state.json"),
+              auditPath: join(config.root, "audit.jsonl"),
+              now: Date.now(),
+            },
+          );
+        }
+      } catch {
+        // Bookkeeping must never break the response already sent.
+      }
       return;
     }
 

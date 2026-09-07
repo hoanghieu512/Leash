@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHandler } from "../../src/proxy/handler.js";
 import { emptyState } from "../../src/domain/types.js";
-import { saveState } from "../../src/state/store.js";
+import { loadState, saveState } from "../../src/state/store.js";
 import { T0 } from "../helpers.js";
 
 const POLICY = `
@@ -255,6 +255,43 @@ describe("streaming", () => {
       rest += decoder.decode(value);
     }
     expect(rest).toContain("second");
+  });
+});
+
+describe("recording fills", () => {
+  it("writes the fill down, so the behavioural rules have a history to read", async () => {
+    upstream.close();
+    await startUpstream(() => ({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          symbol: "BTCUSDT",
+          orderId: 99,
+          transactTime: Date.now(),
+          executedQty: "0.00014000",
+          cummulativeQuoteQty: "11.34860160",
+          status: "FILLED",
+          side: "BUY",
+          fills: [{ price: "81061.44", qty: "0.00014", commission: "0.00000014", commissionAsset: "BTC" }],
+        },
+      }),
+    }));
+    proxy.close();
+    await startProxy();
+
+    declare(12);
+    await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: call("spot_newOrder", { symbol: "BTCUSDT", side: "BUY", quoteOrderQty: 12 }),
+    });
+
+    const s = loadState(join(dir, "state.json"), Date.now(), 100);
+    expect(s.recentOrders).toHaveLength(1);
+    expect(s.positions.BTCUSDT?.quantity).toBeGreaterThan(0);
   });
 });
 
