@@ -134,7 +134,7 @@ Worth stating plainly, because a guardrail that oversells itself is worse than n
 Node 20+, TypeScript, no framework. The decision core — `policy/`, `rules/`, `state/` — is pure functions with no I/O, wrapped in four thin adapters: the hook, the MCP server, the audit log, the dashboard. No adapter holds a rule.
 
 ```
-216 tests passing
+217 tests passing
 ```
 
 Everything fails closed. Unreadable config, corrupt state, a rule that throws, a blown time budget, a payload with no tool name — each one refuses the order. A guardrail that fails open is decoration.
