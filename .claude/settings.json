@@ -12,6 +12,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__binance-mcp-server__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/leash-hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Leash is recording the fill"
+          }
+        ]
+      }
     ]
   }
 }
